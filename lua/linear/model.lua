@@ -151,7 +151,10 @@ function M.render(issue)
   end
 
   vim.list_extend(lines, { "", "## Description", "" })
-  vim.list_extend(lines, split(issue.description ~= nil and issue.description ~= "" and issue.description or "_No description_"))
+  vim.list_extend(
+    lines,
+    split(issue.description ~= nil and issue.description ~= "" and issue.description or "_No description_")
+  )
 
   local comments = vim.list_extend({}, M.nodes(issue.comments))
   table.sort(comments, function(a, b)
@@ -160,7 +163,10 @@ function M.render(issue)
   if #comments > 0 then
     vim.list_extend(lines, { "", ("## Comments (%d)"):format(#comments) })
     for _, c in ipairs(comments) do
-      vim.list_extend(lines, { "", ("### %s · %s"):format(c.user and c.user.name or "Unknown", c.createdAt:sub(1, 10)), "" })
+      vim.list_extend(
+        lines,
+        { "", ("### %s · %s"):format(c.user and c.user.name or "Unknown", c.createdAt:sub(1, 10)), "" }
+      )
       vim.list_extend(lines, split(c.body))
     end
   end

@@ -59,8 +59,16 @@ local list = {
     }, "\n"),
     comments = {
       nodes = {
-        { body = "Mockups are ready in the design file.", createdAt = "2026-09-02T10:00:00Z", user = { name = "Sam Lee" } },
-        { body = "Splitting this into sub-issues.", createdAt = "2026-09-03T14:30:00Z", user = { name = "Alex Martin" } },
+        {
+          body = "Mockups are ready in the design file.",
+          createdAt = "2026-09-02T10:00:00Z",
+          user = { name = "Sam Lee" },
+        },
+        {
+          body = "Splitting this into sub-issues.",
+          createdAt = "2026-09-03T14:30:00Z",
+          user = { name = "Alex Martin" },
+        },
       },
     },
   }),
@@ -70,7 +78,11 @@ local list = {
     description = "Add a toggle in **Appearance** that switches the app theme.\n\n- Follow the system preference by default\n- Store the choice in user preferences",
     comments = {
       nodes = {
-        { body = "Blocked until the theme tokens land (ACME-104).", createdAt = "2026-09-10T08:15:00Z", user = { name = "Alex Martin" } },
+        {
+          body = "Blocked until the theme tokens land (ACME-104).",
+          createdAt = "2026-09-10T08:15:00Z",
+          user = { name = "Alex Martin" },
+        },
         { body = "Tokens PR is in review.", createdAt = "2026-09-11T16:40:00Z", user = { name = "Jordan Kim" } },
       },
     },

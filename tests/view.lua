@@ -23,10 +23,13 @@ local function fake(id, extra)
     state = { name = "Todo", type = "unstarted" },
   }, extra or {})
 end
-cache.set("ENG-1", fake("ENG-1", {
-  parent = fake("ENG-0"),
-  relations = { nodes = { { type = "blocks", relatedIssue = fake("ENG-2") } } },
-}))
+cache.set(
+  "ENG-1",
+  fake("ENG-1", {
+    parent = fake("ENG-0"),
+    relations = { nodes = { { type = "blocks", relatedIssue = fake("ENG-2") } } },
+  })
+)
 cache.set("ENG-0", fake("ENG-0"))
 cache.set("ENG-2", fake("ENG-2"))
 
@@ -38,11 +41,11 @@ check(vim.api.nvim_buf_get_name(0):find("linear://ENG%-1") ~= nil, "buffer named
 vim.cmd("normal gp")
 check(vim.b.linear_issue == "ENG-0", "gp opens the parent")
 
-vim.cmd("execute \"normal \\<BS>\"")
+vim.cmd('execute "normal \\<BS>"')
 check(vim.b.linear_issue == "ENG-1", "<BS> goes back")
 
 vim.fn.search("^- ENG-2")
-vim.cmd("execute \"normal \\<CR>\"")
+vim.cmd('execute "normal \\<CR>"')
 check(vim.b.linear_issue == "ENG-2", "<CR> follows a blocks link")
 check(not vim.bo.modifiable, "buffer is read-only")
 

@@ -38,9 +38,12 @@ test("sort: active, next, older cycles desc, no cycle; then state and priority",
     issue("A-6", active, "started", 0),
     issue("A-7", active, "started", 2),
   })
-  eq(vim.tbl_map(function(i)
-    return i.identifier
-  end, sorted), { "A-7", "A-6", "A-5", "A-4", "A-3", "A-2", "A-1" })
+  eq(
+    vim.tbl_map(function(i)
+      return i.identifier
+    end, sorted),
+    { "A-7", "A-6", "A-5", "A-4", "A-3", "A-2", "A-1" }
+  )
 end)
 
 test("group_links: blocks vs blocked by, related, duplicates", function()
@@ -104,7 +107,9 @@ test("render: sections, description and comments in order", function()
     labels = { nodes = { { name = "bug" } } },
     parent = { identifier = "ENG-0", title = "Epic", state = { name = "Todo" } },
     children = { nodes = {} },
-    relations = { nodes = { { type = "blocks", relatedIssue = { identifier = "ENG-2", title = "B", state = { name = "Todo" } } } } },
+    relations = {
+      nodes = { { type = "blocks", relatedIssue = { identifier = "ENG-2", title = "B", state = { name = "Todo" } } } },
+    },
     inverseRelations = { nodes = {} },
     comments = {
       nodes = {
@@ -138,12 +143,17 @@ test("linked_issues: stable order, parent then blocked by then blocks then relat
   end
   local linked = model.linked_issues({
     parent = i("P-1"),
-    relations = { nodes = { { type = "related", relatedIssue = i("R-1") }, { type = "blocks", relatedIssue = i("B-1") } } },
+    relations = {
+      nodes = { { type = "related", relatedIssue = i("R-1") }, { type = "blocks", relatedIssue = i("B-1") } },
+    },
     inverseRelations = { nodes = { { type = "blocks", issue = i("BB-1") } } },
   })
-  eq(vim.tbl_map(function(x)
-    return x.identifier
-  end, linked), { "P-1", "BB-1", "B-1", "R-1" })
+  eq(
+    vim.tbl_map(function(x)
+      return x.identifier
+    end, linked),
+    { "P-1", "BB-1", "B-1", "R-1" }
+  )
 end)
 
 test("parse_response: data, auth error, rate limit, garbage", function()

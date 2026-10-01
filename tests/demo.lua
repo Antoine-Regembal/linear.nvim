@@ -16,7 +16,8 @@ local function check(cond, msg)
   print("ok   " .. msg)
 end
 
-local _, data = demo.respond(queries.my_issues, { filter = { state = { type = { nin = { "completed", "canceled" } } } } })
+local _, data =
+  demo.respond(queries.my_issues, { filter = { state = { type = { nin = { "completed", "canceled" } } } } })
 local issues = model.sort_issues(data.viewer.assignedIssues.nodes)
 check(#issues == 9, "completed issues are filtered out")
 check(issues[1].cycle and issues[1].cycle.isActive, "active cycle comes first")
@@ -47,12 +48,12 @@ vim.wait(2000, function()
 end)
 check(vim.b.linear_issue == "ACME-102", "issue opens through api.request in demo mode")
 vim.fn.search("^- ACME-104")
-vim.cmd("execute \"normal \\<CR>\"")
+vim.cmd('execute "normal \\<CR>"')
 vim.wait(2000, function()
   return vim.b.linear_issue == "ACME-104"
 end)
 check(vim.b.linear_issue == "ACME-104", "follow blocked-by link")
-vim.cmd("execute \"normal \\<BS>\"")
+vim.cmd('execute "normal \\<BS>"')
 vim.wait(2000, function()
   return vim.b.linear_issue == "ACME-102"
 end)
@@ -80,7 +81,7 @@ vim.wait(2000, function()
   return vim.b.linear_issue == "ACME-104"
 end)
 check(vim.b.linear_issue == "ACME-104", "gr opens the picked issue")
-vim.cmd("execute \"normal \\<BS>\"")
+vim.cmd('execute "normal \\<BS>"')
 vim.wait(2000, function()
   return vim.b.linear_issue == "ACME-102"
 end)

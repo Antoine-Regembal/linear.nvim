@@ -25,7 +25,11 @@ function M.check()
   local auth = require("linear.auth")
   local backend = auth.backend()
   if backend == "file" then
-    h.warn("No OS keychain found (macOS `security` or `secret-tool`); the key is stored in " .. auth._credentials_path() .. " (0600)")
+    h.warn(
+      "No OS keychain found (macOS `security` or `secret-tool`); the key is stored in "
+        .. auth._credentials_path()
+        .. " (0600)"
+    )
   else
     h.ok("Credential storage: " .. backend)
   end

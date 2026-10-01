@@ -47,7 +47,10 @@ local full = vim.tbl_extend("force", summary, {
 cache.set("ENG-1", full)
 local ctx = fake_ctx(summary)
 picker.preview(ctx)
-check(ctx.lines:find("The full description") and ctx.lines:find("A comment"), "cached issue renders in full immediately")
+check(
+  ctx.lines:find("The full description") and ctx.lines:find("A comment"),
+  "cached issue renders in full immediately"
+)
 
 -- not cached: summary first, full issue after the fetch
 cache.clear()
