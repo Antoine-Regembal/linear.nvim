@@ -1,0 +1,89 @@
+*linear.txt*  Browse Linear issues from Neovim
+
+==============================================================================
+CONTENTS                                                     *linear-contents*
+
+  1. Setup ........................................... |linear-setup|
+  2. Commands ........................................ |linear-commands|
+  3. Keymaps ......................................... |linear-keymaps|
+  4. Configuration ................................... |linear-config|
+  5. Security ........................................ |linear-security|
+
+==============================================================================
+1. SETUP                                                        *linear-setup*
+
+lazy.nvim / LazyVim: >lua
+  { "Antoine-Regembal/linear.nvim", version = "*",
+    dependencies = { "folke/snacks.nvim" }, opts = {} }
+<
+vim.pack (Neovim >= 0.12): >lua
+  vim.pack.add({
+    "https://github.com/folke/snacks.nvim",
+    { src = "https://github.com/Antoine-Regembal/linear.nvim",
+      version = vim.version.range("0.1") },
+  })
+  require("linear").setup()
+<
+mini.deps, vim-plug and packer.nvim: see the README.
+
+snacks.nvim is optional (pickers fall back to |vim.ui.select()|). |:Linear|
+works without setup(); setup() adds the keymaps and options.
+
+Then run |:Linear| login once and paste a Linear personal API key.
+
+==============================================================================
+2. COMMANDS                                                *linear-commands*
+
+                                                                     *:Linear*
+:Linear issues          Your assigned issues, sorted by cycle then status.
+                        The current git branch's issue is pinned on top.
+                        The preview shows the full issue (description,
+                        comments, links), fetched as you move.
+:Linear cycle           Your issues in the active cycle.
+:Linear open [ID]       Open an issue by identifier, e.g. ENG-123.
+:Linear branch          Open the issue referenced by the current git branch
+                        (case-insensitive, e.g. alex/eng-123-fix -> ENG-123).
+:Linear login           Ask for an API key, validate it and store it.
+:Linear logout          Delete the stored key.
+:Linear whoami          Show the account the key belongs to.
+:Linear demo [off]      Fictional data, no API key or network needed.
+
+==============================================================================
+3. KEYMAPS                                                  *linear-keymaps*
+
+Global, under `prefix` (default <leader>i):
+  i  my issues      c  active cycle     o  open by id
+  b  branch issue   l  login            L  logout
+
+Issue buffer:
+  <CR>, gd   open the issue on the cursor line
+  <BS>       previous issue
+  gp         parent issue
+  gr         pick a linked issue
+  gx         open in the browser
+  yy         copy the identifier
+  R          refresh
+  q          close
+
+==============================================================================
+4. CONFIGURATION                                             *linear-config*
+
+>lua
+  require("linear").setup({
+    prefix = "<leader>i",      -- false disables global keymaps
+    cache_ttl = 60,
+    include_completed = false,
+    max_issues = 100,
+    pin_branch_issue = true,
+    demo = false,
+  })
+<
+
+==============================================================================
+5. SECURITY                                                *linear-security*
+
+The key comes from $LINEAR_API_KEY, else the OS keychain (macOS Keychain or
+libsecret), else stdpath("data")/linear.nvim/credentials.json (mode 0600).
+It is only sent to api.linear.app, via curl's stdin. Use a read-only key.
+
+ vim:tw=78:ts=8:ft=help:norl:
