@@ -1,8 +1,8 @@
-# Regenerate the README GIF from the repo root: vhs assets/demo.tape
+# Regenerate from the repo root: vhs assets/navigate.tape
 # Uses demo mode only: fictional data, no Linear account, no network calls to Linear.
 # Captions and the key display come from assets/demo-init.lua.
 
-Output assets/demo.gif
+Output assets/navigate.gif
 
 Require nvim
 
@@ -19,45 +19,29 @@ Hide
 Type "NVIM_APPNAME=linear-demo nvim --headless -u assets/demo-init.lua '+Lazy! sync' +qa && clear"
 Enter
 Sleep 30s
-Type "NVIM_APPNAME=linear-demo nvim -u assets/demo-init.lua"
+Type "NVIM_APPNAME=linear-demo DEMO=navigate nvim -u assets/demo-init.lua '+Linear open ACME-102'"
 Enter
 Sleep 2s
 Show
 
-# 1. Intro
-Sleep 2.5s
+# 1. ACME-102 is open
+Sleep 3s
 
-# 2. Picker sorted by sprint
-Type " ii"
-Sleep 3.5s
-
-# 3. Full issue in the preview, then back to the pinned branch issue
-Down
-Sleep 2s
-Down
-Sleep 2s
-Up@400ms 2
-Sleep 2s
-
-# 4. Open ACME-102
-Enter
-Sleep 3.5s
-
-# 5. Linked issues picker: parent, then blocked by
+# 2. Linked issues picker: parent, then blocked by
 Type "gr"
 Sleep 2.5s
 Down
 Sleep 2.5s
 
-# 6. Follow the blocked-by link to ACME-104
+# 3. Follow the blocked-by link to ACME-104
 Enter
 Sleep 3.5s
 
-# 7. Back to ACME-102
+# 4. Back to ACME-102
 Backspace
 Sleep 3s
 
-# 8. Parent issue
+# 5. Parent issue
 Type "gp"
 Sleep 4s
 

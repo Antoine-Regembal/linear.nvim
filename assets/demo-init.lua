@@ -1,4 +1,5 @@
--- Minimal config used by assets/demo.tape: NVIM_APPNAME=linear-demo nvim -u assets/demo-init.lua
+-- Minimal config used by the assets/*.tape recordings:
+--   NVIM_APPNAME=linear-demo DEMO=<name> nvim -u assets/demo-init.lua
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not vim.uv.fs_stat(lazypath) then
   vim.fn.system({
@@ -30,49 +31,83 @@ require("lazy").setup({
       vim.cmd.colorscheme("tokyonight-night")
     end,
   },
-  { "folke/snacks.nvim", opts = { picker = { enabled = true } } },
+  { "folke/snacks.nvim", opts = { picker = { enabled = true }, input = { enabled = true } } },
   { dir = vim.fn.getcwd(), name = "linear.nvim", dependencies = { "folke/snacks.nvim" }, opts = { demo = true } },
 }, { install = { colorscheme = { "tokyonight" } }, change_detection = { enabled = false } })
 
 -- Recording overlays: a caption bar explaining each step, and the keys being pressed.
 
-local steps = {
-  { keys = nil, title = "linear.nvim: browse your Linear issues from Neovim", sub = "Demo mode, fictional data" },
-  {
-    keys = "<Space>ii",
-    title = "Your issues by sprint, current branch's issue pinned on top",
-    sub = "Branch alex/acme-102-dark-mode -> ACME-102 (git), then active cycle (C12*), next (C13>), no cycle",
+local demos = {
+  issues = {
+    { title = "linear.nvim: your Linear issues in Neovim", sub = "Demo mode, fictional data" },
+    {
+      keys = "<Space>ii",
+      title = "Your issues by sprint, current branch's issue pinned on top",
+      sub = "Branch alex/acme-102-dark-mode -> ACME-102 (git), then active cycle (C12*), next (C13>), no cycle",
+    },
+    {
+      keys = "<Down>",
+      title = "The preview shows the full issue",
+      sub = "Description, comments and linked issues load as you move",
+    },
+    { keys = "<Space>ic", title = "Only the active cycle", sub = ":Linear cycle, same preview" },
   },
-  {
-    keys = "<Down>",
-    title = "The preview shows the full issue",
-    sub = "Description, comments and linked issues load as you move",
+  navigate = {
+    {
+      title = "Navigate between linked issues",
+      sub = "ACME-102: parent, blocked by, related, description and comments",
+    },
+    {
+      keys = "gr",
+      title = "Pick a linked issue",
+      sub = "Parent, sub-issues, blocking, blocked by, related and duplicates",
+    },
+    {
+      keys = "<CR>",
+      title = "Follow the link: ACME-104 blocks ACME-102",
+      sub = "Every issue identifier in the buffer can be opened with Enter",
+    },
+    { keys = "<BS>", title = "Go back to the previous issue", sub = "Navigation history, like tags" },
+    { keys = "gp", title = "Jump to the parent issue", sub = "Its sub-issues are listed and can be opened too" },
   },
-  { keys = "<CR>", title = "Open the issue", sub = "Parent, blocked by, related, description and comments" },
-  {
-    keys = "gr",
-    title = "Pick a linked issue",
-    sub = "Parent, sub-issues, blocking, blocked by, related and duplicates",
+  branch = {
+    { title = "Jump straight to an issue", sub = "Demo mode, current branch: alex/acme-102-dark-mode" },
+    {
+      keys = "<Space>io",
+      title = "Open any issue by id",
+      sub = "Case-insensitive, prompts with the id under the cursor",
+    },
+    { keys = "<CR>", title = "ACME-105 opens", sub = "yy copies its id, gx opens it in the browser" },
+    {
+      keys = "<Space>ib",
+      title = "Open the issue of the current git branch",
+      sub = "alex/acme-102-dark-mode -> ACME-102, any case, any prefix",
+    },
   },
-  {
-    keys = "<CR>",
-    title = "Follow the link: ACME-104 blocks ACME-102",
-    sub = "Every issue identifier in the buffer can be opened with Enter",
-  },
-  { keys = "<BS>", title = "Go back to the previous issue", sub = "Navigation history, like tags" },
-  { keys = "gp", title = "Jump to the parent issue", sub = "Its sub-issues are listed and can be opened too" },
 }
+
+local steps = demos[vim.env.DEMO] or demos.issues
 
 local labels = {
   ["<Space>ii"] = "My issues",
+  ["<Space>ic"] = "Active cycle",
+  ["<Space>ib"] = "Branch issue",
+  ["<Space>io"] = "Open by id",
   ["<Down>"] = "Next issue",
   ["<CR>"] = "Open",
+  ["<Esc>"] = "Close",
   ["gr"] = "Linked issues",
   ["<BS>"] = "Back",
   ["gp"] = "Parent issue",
 }
 
-local pretty = { ["<Space>"] = "Space", ["<CR>"] = "Enter", ["<BS>"] = "Backspace", ["<Down>"] = "↓" }
+local pretty = {
+  ["<Space>"] = "Space",
+  ["<CR>"] = "Enter",
+  ["<BS>"] = "Backspace",
+  ["<Down>"] = "↓",
+  ["<Esc>"] = "Esc",
+}
 
 local ns = vim.api.nvim_create_namespace("linear_demo")
 vim.api.nvim_set_hl(0, "DemoCaption", { link = "NormalFloat" })
@@ -105,6 +140,15 @@ vim.wo[caption_float].winhighlight = "Normal:DemoCaption"
 vim.api.nvim_create_autocmd("WinEnter", {
   callback = function()
     if vim.api.nvim_get_current_win() == caption_win and vim.api.nvim_win_is_valid(main_win) then
+      vim.api.nvim_set_current_win(main_win)
+    end
+  end,
+})
+-- Startup focuses the first window, the caption split
+vim.api.nvim_create_autocmd("VimEnter", {
+  once = true,
+  callback = function()
+    if vim.api.nvim_win_is_valid(main_win) then
       vim.api.nvim_set_current_win(main_win)
     end
   end,

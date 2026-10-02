@@ -2,7 +2,17 @@
 
 Browse your [Linear](https://linear.app) issues from Neovim: issues sorted by cycle (sprint), full issue view (status, priority, labels, description, comments) and navigation through parent, sub-issues, blocking / blocked-by, related and duplicate issues.
 
-![linear.nvim demo](assets/demo.gif)
+**Your issues by sprint.** Active cycle first, then next, older and no cycle, with the current git branch's issue pinned on top. The preview shows the full issue. The GIFs use demo mode, with fictional data.
+
+![Issues picker sorted by cycle with the branch issue pinned, full issue preview, active cycle only](assets/issues.gif)
+
+**Navigate between linked issues.** Parent, sub-issues, blocked by / blocks, related and duplicates: follow any link with Enter and come back with Backspace.
+
+![Pick a linked issue, follow the blocked-by link, go back, jump to the parent](assets/navigate.gif)
+
+**Jump straight to an issue.** Open any issue by its id, or the one named in the current git branch.
+
+![Open an issue by id, then the issue of the current git branch](assets/branch.gif)
 
 ## Features
 
@@ -206,10 +216,12 @@ nvim --headless --clean -l tests/preview.lua
 nvim --headless --clean -l tests/demo.lua
 ```
 
-The GIF is generated from demo mode with [VHS](https://github.com/charmbracelet/vhs) (`brew install vhs`):
+The GIFs are generated from demo mode with [VHS](https://github.com/charmbracelet/vhs) (`brew install vhs`):
 
 ```sh
-vhs assets/demo.tape
+vhs assets/issues.tape
+vhs assets/navigate.tape
+vhs assets/branch.tape
 ```
 
 ## License
