@@ -2,6 +2,7 @@ local api = require("linear.api")
 local cache = require("linear.cache")
 local model = require("linear.model")
 local queries = require("linear.queries")
+local uploads = require("linear.uploads")
 
 local M = {}
 
@@ -42,6 +43,62 @@ local function id_under_cursor()
   return model.find_id(vim.api.nvim_get_current_line())
 end
 
+---Upload or cached attachment linked on the cursor line.
+---@return string|nil
+local function attachment_under_cursor()
+  local dir = uploads.dir()
+  for target in vim.api.nvim_get_current_line():gmatch("%]%(([^%s%)]+)[^%)]*%)") do
+    if uploads.is_upload(target) or vim.startswith(target, dir) then
+      return target
+    end
+  end
+end
+
+local function open_attachment(target)
+  if not uploads.is_upload(target) then
+    vim.ui.open(target)
+    return
+  end
+  vim.notify("Linear: downloading attachment…", vim.log.levels.INFO, { id = "linear_loading" })
+  uploads.fetch(target, function(err, file)
+    if not file then
+      vim.notify("Linear: " .. err, vim.log.levels.ERROR, { id = "linear_loading" })
+      return
+    end
+    vim.notify("Linear: attachment ready", vim.log.levels.INFO, { id = "linear_loading", timeout = 500 })
+    vim.ui.open(file.path)
+  end)
+end
+
+---Re-render an issue buffer, keeping the cursor of every window showing it.
+local function rerender(buf, lines)
+  local cursors = {}
+  for _, win in ipairs(vim.fn.win_findbuf(buf)) do
+    cursors[win] = vim.api.nvim_win_get_cursor(win)
+  end
+  set_lines(buf, lines)
+  for win, cursor in pairs(cursors) do
+    cursor[1] = math.min(cursor[1], vim.api.nvim_buf_line_count(buf))
+    pcall(vim.api.nvim_win_set_cursor, win, cursor)
+  end
+end
+
+---Download the issue's images, then show them in place of their remote URLs.
+local function load_attachments(buf, issue, files)
+  local list = uploads.collect(issue)
+  if #list == vim.tbl_count(files) then
+    return
+  end
+  uploads.fetch_all(issue, function(all, errors)
+    if #errors > 0 then
+      vim.notify(("Linear: %d attachment(s) could not be loaded: %s"):format(#errors, errors[1]), vim.log.levels.WARN)
+    end
+    if vim.api.nvim_buf_is_valid(buf) and current[buf] == issue then
+      rerender(buf, model.render(issue, all))
+    end
+  end)
+end
+
 local function map(buf, lhs, fn, desc)
   vim.keymap.set("n", lhs, fn, { buffer = buf, nowait = true, silent = true, desc = "Linear: " .. desc })
 end
@@ -79,6 +136,11 @@ local function setup_buffer(buf)
     end
   end, "pick linked issue")
   map(buf, "gx", function()
+    local attachment = attachment_under_cursor()
+    if attachment then
+      open_attachment(attachment)
+      return
+    end
     local id = id_under_cursor() or vim.b[buf].linear_issue
     local issue = current[buf]
     if issue and id ~= issue.identifier then
@@ -95,7 +157,7 @@ local function setup_buffer(buf)
         end
       end)
     end
-  end, "open in browser")
+  end, "open attachment or issue in browser")
   map(buf, "yy", function()
     local id = id_under_cursor() or vim.b[buf].linear_issue
     vim.fn.setreg('"', id)
@@ -116,6 +178,18 @@ local function setup_buffer(buf)
   })
 end
 
+---snacks.image sets itself up on the first file read (BufReadPre), and issue buffers are
+---not files: set it up and attach it so embedded images show even when no file was opened.
+---@param buf integer
+local function attach_images(buf)
+  pcall(function()
+    if Snacks.image.config.enabled then
+      Snacks.image.setup()
+      Snacks.image.doc.attach(buf)
+    end
+  end)
+end
+
 local function get_buffer()
   local cur = vim.api.nvim_get_current_buf()
   if vim.b[cur].linear_issue ~= nil then
@@ -123,6 +197,9 @@ local function get_buffer()
   end
   local buf = vim.api.nvim_create_buf(false, true)
   setup_buffer(buf)
+  if require("linear.config").options.attachments.enabled then
+    attach_images(buf)
+  end
   return buf, true
 end
 
@@ -146,7 +223,12 @@ function M.open(id, opts)
     vim.b[buf].linear_issue = issue.identifier
     current[buf] = issue
     pcall(vim.api.nvim_buf_set_name, buf, "linear://" .. issue.identifier)
-    set_lines(buf, model.render(issue))
+    local attachments = require("linear.config").options.attachments.enabled
+    local files = attachments and uploads.cached(issue) or {}
+    set_lines(buf, model.render(issue, files))
+    if attachments then
+      load_attachments(buf, issue, files)
+    end
     if created or vim.api.nvim_get_current_buf() ~= buf then
       vim.api.nvim_set_current_buf(buf)
     end

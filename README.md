@@ -20,6 +20,7 @@ Browse your [Linear](https://linear.app) issues from Neovim: issues sorted by cy
 - Full issue in the picker preview: status, priority, labels, description, comments, links
 - Issue buffer with parent, sub-issues, blocked by / blocks, related and duplicate issues
 - Jump between linked issues and back, like tags
+- Screenshots of the issue shown inline, with [snacks.image](https://github.com/folke/snacks.nvim/blob/main/docs/image.md)
 - Open the issue of the current git branch (`alex/eng-123-fix-login` → `ENG-123`)
 - One-command login, key stored in your OS keychain
 - Demo mode with fictional data to try it without an account
@@ -31,6 +32,7 @@ Works with any Neovim >= 0.10 configuration and plugin manager. Uses the [snacks
 - Neovim >= 0.10
 - `curl`
 - Optional, recommended: [snacks.nvim](https://github.com/folke/snacks.nvim) for the picker preview (already part of LazyVim)
+- Optional: a terminal with the kitty graphics protocol (Ghostty, kitty, WezTerm) to see images
 - Optional: macOS Keychain (built in) or `secret-tool` (libsecret) on Linux to store your key
 
 ## Installation
@@ -77,7 +79,7 @@ return {
 ```lua
 vim.pack.add({
   "https://github.com/folke/snacks.nvim",
-  { src = "https://github.com/Antoine-Regembal/linear.nvim", version = vim.version.range("0.1") },
+  { src = "https://github.com/Antoine-Regembal/linear.nvim", version = vim.version.range("0.2") },
 })
 require("linear").setup()
 ```
@@ -90,7 +92,7 @@ require("linear").setup()
 ```lua
 MiniDeps.add({
   source = "Antoine-Regembal/linear.nvim",
-  checkout = "v0.1.0",
+  checkout = "v0.2.0",
   depends = { "folke/snacks.nvim" },
 })
 require("linear").setup()
@@ -103,7 +105,7 @@ require("linear").setup()
 
 ```vim
 Plug 'folke/snacks.nvim'
-Plug 'Antoine-Regembal/linear.nvim', { 'tag': 'v0.1.0' }
+Plug 'Antoine-Regembal/linear.nvim', { 'tag': 'v0.2.0' }
 
 " after plug#end()
 lua require("linear").setup()
@@ -117,7 +119,7 @@ lua require("linear").setup()
 ```lua
 use({
   "Antoine-Regembal/linear.nvim",
-  tag = "v0.1.0",
+  tag = "v0.2.0",
   requires = { "folke/snacks.nvim" },
   config = function()
     require("linear").setup()
@@ -155,6 +157,7 @@ Demo mode serves a fictional `ACME` team from local data: no API key, no network
 | `:Linear branch` | Open the issue whose id is in the current git branch name, case-insensitive (`alex/eng-123-fix-login`, `ENG-123`, `feature/ENG-123`) |
 | `:Linear login` / `logout` / `whoami` | Manage the API key |
 | `:Linear demo [off]` | Fictional data, no account needed |
+| `:Linear cache clear` | Empty the issue cache and the downloaded attachments |
 
 ## Keymaps
 
@@ -176,7 +179,7 @@ Inside an issue buffer:
 | `<BS>` | Back to the previous issue |
 | `gp` | Open the parent issue |
 | `gr` | Pick among parent, sub-issues and linked issues |
-| `gx` | Open in the browser |
+| `gx` | Open the attachment on the cursor line (image, video, file), else the issue in the browser |
 | `yy` | Copy the issue identifier |
 | `R` | Refresh |
 | `q` | Close |
@@ -191,13 +194,26 @@ opts = {
   max_issues = 100,
   pin_branch_issue = true,   -- pin the current git branch issue on top of the pickers
   demo = false,              -- start in demo mode
+  attachments = {
+    enabled = true,          -- download images embedded in issues
+    max_size_mb = 50,
+  },
 }
 ```
+
+## Attachments
+
+Images pasted in a description or a comment live in Linear's private storage (`uploads.linear.app`). linear.nvim downloads them with your key into `stdpath("cache")/linear.nvim/uploads` (files `0600`), once, and the issue buffer points to the local files. [snacks.image](https://github.com/folke/snacks.nvim/blob/main/docs/image.md) then shows them inline, in terminals with the kitty graphics protocol (Ghostty, kitty, WezTerm; also inside herdr).
+
+- The issue opens right away, images appear when downloaded.
+- Videos are not shown inline: `gx` on their line downloads them and opens them in your default player.
+- Other files (`[report.pdf](...)` links) are downloaded when you press `gx` on them.
+- `:Linear cache clear` deletes the downloaded files. `attachments = { enabled = false }` turns the feature off.
 
 ## Security
 
 - The key is read from `LINEAR_API_KEY` if set, otherwise from the OS keychain (macOS Keychain, libsecret). Without a keychain it falls back to `stdpath("data")/linear.nvim/credentials.json` with `0600` permissions (`:checkhealth linear` warns about it).
-- The key is sent only to `https://api.linear.app/graphql`, through curl's stdin so it never appears in the process list, and is never printed.
+- The key is sent only to `https://api.linear.app/graphql` and `https://uploads.linear.app` (attachments, redirects not followed), through curl's stdin so it never appears in the process list, and is never printed.
 - On macOS, `security add-generic-password` receives the key as an argument during `:Linear login`, so it is briefly visible to local processes at that moment.
 - Prefer a **read-only** key restricted to the teams you need: the plugin never writes to Linear. Revoke it any time from Linear's settings and run `:Linear logout`.
 

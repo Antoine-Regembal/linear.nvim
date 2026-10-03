@@ -173,5 +173,76 @@ test("parse_response: null becomes nil", function()
   eq(data.issue.parent, nil)
 end)
 
+local uploads = require("linear.uploads")
+local U1 = "https://uploads.linear.app/org/a1/b1"
+local U2 = "https://uploads.linear.app/org/a2/b2"
+
+test("uploads.extract: embedded uploads only, deduplicated, with titles", function()
+  local text = table.concat({
+    "![shot.png](" .. U1 .. ") and again ![shot.png](" .. U1 .. ")",
+    "![clip.mov](" .. U2 .. ' "title")',
+    "[report.pdf](https://uploads.linear.app/org/a3/b3)",
+    "![logo](https://example.com/logo.png)",
+  }, "\n")
+  eq(uploads.extract(text), { { url = U1, alt = "shot.png" }, { url = U2, alt = "clip.mov" } })
+  eq(uploads.extract(nil), {})
+end)
+
+test("uploads.is_upload: only https://uploads.linear.app", function()
+  assert(uploads.is_upload(U1))
+  assert(not uploads.is_upload("http://uploads.linear.app/x"))
+  assert(not uploads.is_upload("https://uploads.linear.app.evil.com/x"))
+  assert(not uploads.is_upload("https://evil.com/https://uploads.linear.app/x"))
+  assert(not uploads.is_upload(nil))
+end)
+
+test("uploads.extension: from content type", function()
+  eq(uploads.extension("image/png"), "png")
+  eq(uploads.extension("image/JPEG; charset=binary"), "jpg")
+  eq(uploads.extension("video/quicktime"), "mov")
+  eq(uploads.extension("application/octet-stream"), "bin")
+  eq(uploads.extension(nil), "bin")
+end)
+
+test("uploads.collect: videos are not downloaded with the issue", function()
+  local issue = {
+    description = "![shot.png](" .. U1 .. ")\n![Screen Recording.MOV](" .. U2 .. ")",
+    comments = { nodes = { { body = "![c.webm](https://uploads.linear.app/o/c)" } } },
+  }
+  eq(uploads.collect(issue), { { url = U1, alt = "shot.png" } })
+end)
+
+test("uploads.rewrite: local images, other uploads and missing ones keep their URL", function()
+  local text = "![shot.png](" .. U1 .. ")\n![doc.pdf](" .. U2 .. ")\n![other](https://uploads.linear.app/o/x)"
+  local out = uploads.rewrite(text, {
+    [U1] = { path = "/c/1.png", kind = "image" },
+    [U2] = { path = "/c/2.pdf", kind = "file" },
+  })
+  eq(out, "![shot.png](/c/1.png)\n![doc.pdf](" .. U2 .. ")\n![other](https://uploads.linear.app/o/x)")
+  eq(uploads.rewrite(text, {}), text)
+end)
+
+test("render: description and comments use local files", function()
+  local lines = model.render({
+    identifier = "A-1",
+    title = "t",
+    description = "![d](" .. U1 .. ")",
+    comments = { nodes = { { body = "![c](" .. U2 .. ")", createdAt = "2026-01-01", user = { name = "U" } } } },
+  }, { [U1] = { path = "/c/1.png", kind = "image" }, [U2] = { path = "/c/2.png", kind = "image" } })
+  assert(vim.tbl_contains(lines, "![d](/c/1.png)"))
+  assert(vim.tbl_contains(lines, "![c](/c/2.png)"))
+end)
+
+test("uploads.fetch: refuses other hosts", function()
+  local result
+  uploads.fetch("https://example.com/x.png", function(err)
+    result = err
+  end)
+  vim.wait(1000, function()
+    return result ~= nil
+  end)
+  assert(result and result:find("not a Linear upload"))
+end)
+
 print(("\n%d/%d passed"):format(count - failures, count))
 os.exit(failures == 0 and 0 or 1)

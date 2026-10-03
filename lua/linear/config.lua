@@ -7,6 +7,7 @@ local M = {}
 ---@field max_issues integer Max assigned issues fetched
 ---@field demo boolean Start in demo mode (fictional data, no API calls)
 ---@field pin_branch_issue boolean Pin the current git branch's issue at the top of the issue pickers
+---@field attachments { enabled: boolean, max_size_mb: integer } Download images embedded in issues
 M.defaults = {
   demo = false,
   pin_branch_issue = true,
@@ -14,6 +15,10 @@ M.defaults = {
   cache_ttl = 60,
   include_completed = false,
   max_issues = 100,
+  attachments = {
+    enabled = true,
+    max_size_mb = 50,
+  },
 }
 
 ---@type linear.Config

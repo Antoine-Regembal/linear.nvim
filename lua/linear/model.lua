@@ -108,8 +108,11 @@ local function split(text)
 end
 
 ---@param issue table issue_detail payload
+---@param files? table<string, linear.Upload> local files of embedded uploads, by URL
 ---@return string[]
-function M.render(issue)
+function M.render(issue, files)
+  local uploads = require("linear.uploads")
+  files = files or {}
   local lines = { ("# %s  %s"):format(issue.identifier, issue.title), "" }
   local labels = vim.tbl_map(function(l)
     return l.name
@@ -153,7 +156,10 @@ function M.render(issue)
   vim.list_extend(lines, { "", "## Description", "" })
   vim.list_extend(
     lines,
-    split(issue.description ~= nil and issue.description ~= "" and issue.description or "_No description_")
+    split(
+      issue.description ~= nil and issue.description ~= "" and uploads.rewrite(issue.description, files)
+        or "_No description_"
+    )
   )
 
   local comments = vim.list_extend({}, M.nodes(issue.comments))
@@ -167,7 +173,7 @@ function M.render(issue)
         lines,
         { "", ("### %s · %s"):format(c.user and c.user.name or "Unknown", c.createdAt:sub(1, 10)), "" }
       )
-      vim.list_extend(lines, split(c.body))
+      vim.list_extend(lines, split(uploads.rewrite(c.body, files)))
     end
   end
   return lines

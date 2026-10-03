@@ -7,7 +7,8 @@ CONTENTS                                                     *linear-contents*
   2. Commands ........................................ |linear-commands|
   3. Keymaps ......................................... |linear-keymaps|
   4. Configuration ................................... |linear-config|
-  5. Security ........................................ |linear-security|
+  5. Attachments ..................................... |linear-attachments|
+  6. Security ........................................ |linear-security|
 
 ==============================================================================
 1. SETUP                                                        *linear-setup*
@@ -20,7 +21,7 @@ vim.pack (Neovim >= 0.12): >lua
   vim.pack.add({
     "https://github.com/folke/snacks.nvim",
     { src = "https://github.com/Antoine-Regembal/linear.nvim",
-      version = vim.version.range("0.1") },
+      version = vim.version.range("0.2") },
   })
   require("linear").setup()
 <
@@ -47,6 +48,7 @@ Then run |:Linear| login once and paste a Linear personal API key.
 :Linear logout          Delete the stored key.
 :Linear whoami          Show the account the key belongs to.
 :Linear demo [off]      Fictional data, no API key or network needed.
+:Linear cache clear     Empty the issue cache and the downloaded attachments.
 
 ==============================================================================
 3. KEYMAPS                                                  *linear-keymaps*
@@ -60,7 +62,8 @@ Issue buffer:
   <BS>       previous issue
   gp         parent issue
   gr         pick a linked issue
-  gx         open in the browser
+  gx         open the attachment on the cursor line, else the issue in
+             the browser
   yy         copy the identifier
   R          refresh
   q          close
@@ -76,14 +79,33 @@ Issue buffer:
     max_issues = 100,
     pin_branch_issue = true,
     demo = false,
+    attachments = {
+      enabled = true,          -- download embedded images
+      max_size_mb = 50,
+    },
   })
 <
 
 ==============================================================================
-5. SECURITY                                                *linear-security*
+5. ATTACHMENTS                                          *linear-attachments*
+
+Images embedded in the description and comments are private files
+on uploads.linear.app. They are downloaded with your key into
+stdpath("cache")/linear.nvim/uploads (files 0600, folder 0700), once, then the
+issue buffer links to the local files. snacks.image shows them inline in
+terminals with the kitty graphics protocol (Ghostty, kitty, WezTerm).
+
+Videos are not shown inline: |gx| on their line downloads them and opens them
+in the default app. Other files ([name](url) links) work the same way.
+
+The issue opens right away; images appear once downloaded.
+
+==============================================================================
+6. SECURITY                                                *linear-security*
 
 The key comes from $LINEAR_API_KEY, else the OS keychain (macOS Keychain or
 libsecret), else stdpath("data")/linear.nvim/credentials.json (mode 0600).
-It is only sent to api.linear.app, via curl's stdin. Use a read-only key.
+It is only sent to api.linear.app and uploads.linear.app, via curl's stdin,
+without following redirects. Use a read-only key.
 
  vim:tw=78:ts=8:ft=help:norl:

@@ -22,6 +22,20 @@ function M.check()
     h.warn("snacks.nvim not found, falling back to vim.ui.select (no preview)")
   end
 
+  if not require("linear.config").options.attachments.enabled then
+    h.info("Attachments disabled (attachments.enabled = false)")
+  else
+    local ok, image = pcall(function()
+      return Snacks.image
+    end)
+    if ok and image and image.supports_terminal() then
+      h.ok("snacks.image can show images in this terminal")
+    else
+      h.warn("snacks.image not available or not supported by this terminal: attachments are links only")
+    end
+    h.info("Attachments cache: " .. require("linear.uploads").dir())
+  end
+
   local auth = require("linear.auth")
   local backend = auth.backend()
   if backend == "file" then

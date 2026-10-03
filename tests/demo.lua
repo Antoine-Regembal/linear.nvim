@@ -4,6 +4,13 @@ vim.env.LINEAR_API_KEY = nil
 vim.cmd("runtime plugin/linear.lua")
 require("linear").setup({ demo = true })
 
+-- downloaded attachments go to a temporary folder, not the real cache
+local uploads = require("linear.uploads")
+local tmp = vim.fn.tempname()
+uploads.dir = function()
+  return tmp
+end
+
 local demo = require("linear.demo")
 local model = require("linear.model")
 local queries = require("linear.queries")
@@ -125,5 +132,28 @@ check(r.pinned == nil and #r.list == #without, "unknown branch issue leaves the 
 config.options.pin_branch_issue = false
 r = pinned_result(base)
 check(r.pinned == nil and r.list[1].identifier == base[1].identifier, "pin_branch_issue = false disables pinning")
+
+-- attachments: fictional uploads are copied from assets/demo, then shown from the local cache
+local function buf_text()
+  return table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+end
+view.open("ACME-102", { refresh = true })
+vim.wait(5000, function()
+  return buf_text():find(tmp, 1, true) ~= nil
+end)
+local text = buf_text()
+check(not text:find("uploads.linear.app", 1, true), "embedded image points to the local file")
+local shot = text:match("!%[dark%-mode%-mockup%.png%]%(([^%)]+)%)")
+check(shot and vim.endswith(shot, ".png") and vim.uv.fs_stat(shot) ~= nil, "screenshot cached locally")
+check(bit.band(vim.uv.fs_stat(shot).mode, tonumber("077", 8)) == 0, "cached files are private (0600)")
+
+vim.fn.search("dark-mode-mockup")
+local opened
+vim.ui.open = function(path)
+  opened = path
+end
+vim.cmd("normal gx")
+check(opened == shot, "gx on an image opens the local file")
+vim.fn.delete(tmp, "rf")
 
 vim.cmd("qa!")

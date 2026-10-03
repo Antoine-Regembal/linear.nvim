@@ -64,6 +64,16 @@ M.subcommands = {
   whoami = function()
     require("linear.auth").whoami()
   end,
+  ---@param arg? string "clear" to empty the issue cache and the downloaded attachments
+  cache = function(arg)
+    if arg ~= "clear" then
+      vim.notify("Linear: usage :Linear cache clear", vim.log.levels.WARN)
+      return
+    end
+    require("linear.cache").clear()
+    require("linear.uploads").clear()
+    vim.notify("Linear: cache cleared")
+  end,
 }
 
 M.keys = {

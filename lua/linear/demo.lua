@@ -20,6 +20,11 @@ local states = {
   done = { name = "Done", type = "completed" },
 }
 
+-- fictional uploads, served from assets/demo
+local UPLOADS = {
+  ["https://uploads.linear.app/acme/demo/dark-mode-mockup"] = "assets/demo/demo-shot.png",
+}
+
 local PRIORITY_LABELS = { [0] = "No priority", "Urgent", "High", "Medium", "Low" }
 
 local function issue(n, title, state, priority, cycle, extra)
@@ -75,7 +80,14 @@ local list = {
   issue(102, "Add dark mode to settings page", "progress", 2, "active", {
     parent = "ACME-101",
     labels = { nodes = { { name = "Feature" } } },
-    description = "Add a toggle in **Appearance** that switches the app theme.\n\n- Follow the system preference by default\n- Store the choice in user preferences",
+    description = table.concat({
+      "Add a toggle in **Appearance** that switches the app theme.",
+      "",
+      "- Follow the system preference by default",
+      "- Store the choice in user preferences",
+      "",
+      "![dark-mode-mockup.png](https://uploads.linear.app/acme/demo/dark-mode-mockup)",
+    }, "\n"),
     comments = {
       nodes = {
         {
@@ -221,6 +233,14 @@ function M.request(query, variables, cb)
   vim.defer_fn(function()
     cb(M.respond(query, variables))
   end, DELAY_MS)
+end
+
+---Local file of a fictional upload.
+---@param url string
+---@return string|nil
+function M.upload(url)
+  local rel = UPLOADS[url]
+  return rel and vim.api.nvim_get_runtime_file(rel, false)[1] or nil
 end
 
 ---@param on boolean
