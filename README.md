@@ -19,7 +19,8 @@ Browse your [Linear](https://linear.app) issues from Neovim: issues sorted by cy
 - Your assigned issues sorted by cycle: active, next, older, then no cycle, with the current git branch's issue pinned on top
 - Full issue in the picker preview: status, priority, labels, description, comments, links
 - Issue buffer with parent, sub-issues, blocked by / blocks, related and duplicate issues
-- Jump between linked issues and back, like tags
+- Jump between linked issues and back, like tags, with a breadcrumb of the path in the winbar
+- Opens in a vertical split next to the file you are editing
 - Screenshots of the issue shown inline, with [snacks.image](https://github.com/folke/snacks.nvim/blob/main/docs/image.md)
 - Open the issue of the current git branch (`alex/eng-123-fix-login` → `ENG-123`)
 - One-command login, key stored in your OS keychain
@@ -79,7 +80,7 @@ return {
 ```lua
 vim.pack.add({
   "https://github.com/folke/snacks.nvim",
-  { src = "https://github.com/Antoine-Regembal/linear.nvim", version = vim.version.range("0.2") },
+  { src = "https://github.com/Antoine-Regembal/linear.nvim", version = vim.version.range("0.4") },
 })
 require("linear").setup()
 ```
@@ -92,7 +93,7 @@ require("linear").setup()
 ```lua
 MiniDeps.add({
   source = "Antoine-Regembal/linear.nvim",
-  checkout = "v0.2.0",
+  checkout = "v0.4.0",
   depends = { "folke/snacks.nvim" },
 })
 require("linear").setup()
@@ -105,7 +106,7 @@ require("linear").setup()
 
 ```vim
 Plug 'folke/snacks.nvim'
-Plug 'Antoine-Regembal/linear.nvim', { 'tag': 'v0.2.0' }
+Plug 'Antoine-Regembal/linear.nvim', { 'tag': 'v0.4.0' }
 
 " after plug#end()
 lua require("linear").setup()
@@ -119,7 +120,7 @@ lua require("linear").setup()
 ```lua
 use({
   "Antoine-Regembal/linear.nvim",
-  tag = "v0.2.0",
+  tag = "v0.4.0",
   requires = { "folke/snacks.nvim" },
   config = function()
     require("linear").setup()
@@ -159,6 +160,8 @@ Demo mode serves a fictional `ACME` team from local data: no API key, no network
 | `:Linear demo [off]` | Fictional data, no account needed |
 | `:Linear cache clear` | Empty the issue cache and the downloaded attachments |
 
+From a file, issues open in a vertical split; from a blank window or an issue window, in place. An issue already shown in the tab gets the focus instead of a second window.
+
 ## Keymaps
 
 Global keymaps use `opts.prefix` (default `<leader>i`; `<leader>l` is taken by Lazy in LazyVim). Check it is free with `:map <leader>i`, or pick another one, or set `prefix = false` and use the `keys` spec above.
@@ -184,6 +187,8 @@ Inside an issue buffer:
 | `R` | Refresh |
 | `q` | Close |
 
+The winbar of an issue window shows the path followed from the first issue, and the number of hops: `ENG-1 › ENG-0 › ENG-2  ·  2 hops`. `<BS>` shortens it, opening an issue from a picker or `:Linear open` starts a new one.
+
 ## Configuration
 
 ```lua
@@ -194,6 +199,7 @@ opts = {
   max_issues = 100,
   pin_branch_issue = true,   -- pin the current git branch issue on top of the pickers
   text_width = 80,           -- wrap descriptions and comments, false to disable
+  breadcrumb = true,         -- path of visited issues in the winbar
   demo = false,              -- start in demo mode
   attachments = {
     enabled = true,          -- download images embedded in issues

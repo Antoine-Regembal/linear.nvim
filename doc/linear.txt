@@ -21,7 +21,7 @@ vim.pack (Neovim >= 0.12): >lua
   vim.pack.add({
     "https://github.com/folke/snacks.nvim",
     { src = "https://github.com/Antoine-Regembal/linear.nvim",
-      version = vim.version.range("0.2") },
+      version = vim.version.range("0.4") },
   })
   require("linear").setup()
 <
@@ -50,6 +50,9 @@ Then run |:Linear| login once and paste a Linear personal API key.
 :Linear demo [off]      Fictional data, no API key or network needed.
 :Linear cache clear     Empty the issue cache and the downloaded attachments.
 
+From a file, issues open in a vertical split; from a blank or issue window,
+in place. An issue already shown in the tab is focused.
+
 ==============================================================================
 3. KEYMAPS                                                  *linear-keymaps*
 
@@ -68,6 +71,9 @@ Issue buffer:
   R          refresh
   q          close
 
+The winbar shows the path followed from the first issue and the number of
+hops. <BS> shortens it, a picker or |:Linear| open starts a new one.
+
 ==============================================================================
 4. CONFIGURATION                                             *linear-config*
 
@@ -79,6 +85,7 @@ Issue buffer:
     max_issues = 100,
     pin_branch_issue = true,
     text_width = 80,         -- wrap descriptions and comments, false to disable
+    breadcrumb = true,       -- path of visited issues in the winbar
     demo = false,
     attachments = {
       enabled = true,          -- download embedded images

@@ -325,6 +325,23 @@ test("render: linked issues aligned in columns, long titles wrapped under the ti
   assert(vim.fn.strdisplaywidth(lines[start + 1]) <= 50, "first line too long")
 end)
 
+test("breadcrumb: current issue alone, then trail with hop count", function()
+  eq(model.breadcrumb({}, "A-1"), "A-1")
+  eq(model.breadcrumb(nil, "A-1"), "A-1")
+  eq(model.breadcrumb({ "A-1" }, "A-2"), "A-1 › A-2  ·  1 hop")
+  eq(model.breadcrumb({ "A-1", "A-2" }, "A-3"), "A-1 › A-2 › A-3  ·  2 hops")
+end)
+
+test("breadcrumb: too wide keeps the origin and the latest issues", function()
+  local trail = { "ENG-1", "ENG-2", "ENG-3", "ENG-4", "ENG-5" }
+  local out = model.breadcrumb(trail, "ENG-6", 40)
+  assert(vim.fn.strdisplaywidth(out) <= 40, "too long: " .. out)
+  assert(vim.startswith(out, "ENG-1 › … › "), "origin kept: " .. out)
+  assert(out:find("ENG%-5 › ENG%-6  ·  5 hops$"), "tail kept: " .. out)
+  eq(model.breadcrumb(trail, "ENG-6", 10), "ENG-1 › … › ENG-6  ·  5 hops")
+  eq(model.breadcrumb(trail, "ENG-6", 200), "ENG-1 › ENG-2 › ENG-3 › ENG-4 › ENG-5 › ENG-6  ·  5 hops")
+end)
+
 test("uploads.fetch: refuses other hosts", function()
   local result
   uploads.fetch("https://example.com/x.png", function(err)

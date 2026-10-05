@@ -190,17 +190,58 @@ local function attach_images(buf)
   end)
 end
 
-local function get_buffer()
-  local cur = vim.api.nvim_get_current_buf()
-  if vim.b[cur].linear_issue ~= nil then
-    return cur, false
-  end
+local function new_buffer()
   local buf = vim.api.nvim_create_buf(false, true)
   setup_buffer(buf)
   if require("linear.config").options.attachments.enabled then
     attach_images(buf)
   end
-  return buf, true
+  return buf
+end
+
+local function is_issue(buf)
+  return vim.b[buf].linear_issue ~= nil
+end
+
+local function is_blank(buf)
+  return vim.bo[buf].buftype == ""
+    and vim.api.nvim_buf_get_name(buf) == ""
+    and not vim.bo[buf].modified
+    and vim.api.nvim_buf_line_count(buf) == 1
+    and vim.api.nvim_buf_get_lines(buf, 0, 1, false)[1] == ""
+end
+
+---@param id string
+---@return integer|nil
+local function window_showing(id)
+  for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+    if vim.b[vim.api.nvim_win_get_buf(win)].linear_issue == id then
+      return win
+    end
+  end
+end
+
+---Buffer to show `id` in, made current: the issue buffer of the current window, else a new one,
+---in place of a blank buffer or in a vertical split.
+---@param id string
+---@return integer
+local function target_buffer(id)
+  local cur = vim.api.nvim_get_current_buf()
+  if is_issue(cur) then
+    return cur
+  end
+  local win = window_showing(id)
+  if win then
+    vim.api.nvim_set_current_win(win)
+    return vim.api.nvim_win_get_buf(win)
+  end
+  local buf = new_buffer()
+  if is_blank(cur) then
+    vim.api.nvim_set_current_buf(buf)
+  else
+    vim.cmd.sbuffer({ args = { tostring(buf) }, mods = { vertical = true } })
+  end
+  return buf
 end
 
 ---@param id string
@@ -213,11 +254,15 @@ function M.open(id, opts)
       vim.notify("Linear: " .. err, vim.log.levels.ERROR, { id = "linear_loading" })
       return
     end
-    local buf, created = get_buffer()
+    local buf = target_buffer(issue.identifier)
     local previous = vim.b[buf].linear_issue
-    if opts.push and previous and previous ~= issue.identifier then
+    if previous and previous ~= issue.identifier then
       local history = vim.b[buf].linear_history
-      table.insert(history, previous)
+      if opts.push then
+        table.insert(history, previous)
+      elseif not opts.pop then
+        history = {}
+      end
       vim.b[buf].linear_history = history
     end
     vim.b[buf].linear_issue = issue.identifier
@@ -228,9 +273,6 @@ function M.open(id, opts)
     set_lines(buf, model.render(issue, files))
     if attachments then
       load_attachments(buf, issue, files)
-    end
-    if created or vim.api.nvim_get_current_buf() ~= buf then
-      vim.api.nvim_set_current_buf(buf)
     end
     vim.api.nvim_win_set_cursor(0, { 1, 0 })
     vim.notify("Linear: " .. issue.identifier, vim.log.levels.INFO, { id = "linear_loading", timeout = 500 })
@@ -243,10 +285,38 @@ function M.back()
   local prev = table.remove(history)
   vim.b[buf].linear_history = history
   if prev then
-    M.open(prev)
+    M.open(prev, { pop = true })
   else
     vim.notify("Linear: no previous issue")
   end
 end
+
+---@param buf integer
+---@param width? integer
+---@return string
+function M.breadcrumb(buf, width)
+  local id = vim.b[buf].linear_issue
+  return id and model.breadcrumb(vim.b[buf].linear_history, id, width) or ""
+end
+
+function M.winbar()
+  local win = vim.g.statusline_winid or 0
+  return " " .. M.breadcrumb(vim.api.nvim_win_get_buf(win), vim.api.nvim_win_get_width(win) - 2)
+end
+
+local WINBAR = "%{v:lua.require'linear.view'.winbar()}"
+
+vim.api.nvim_create_autocmd("BufWinEnter", {
+  group = vim.api.nvim_create_augroup("linear_breadcrumb", { clear = true }),
+  callback = function(ev)
+    local win = vim.api.nvim_get_current_win()
+    local value = vim.api.nvim_get_option_value("winbar", { scope = "local", win = win })
+    if vim.b[ev.buf].linear_history ~= nil and require("linear.config").options.breadcrumb then
+      vim.api.nvim_set_option_value("winbar", WINBAR, { scope = "local", win = win })
+    elseif value == WINBAR then
+      vim.api.nvim_set_option_value("winbar", "", { scope = "local", win = win })
+    end
+  end,
+})
 
 return M

@@ -9,8 +9,10 @@ local M = {}
 ---@field pin_branch_issue boolean Pin the current git branch's issue at the top of the issue pickers
 ---@field text_width integer|false Wrap descriptions and comments at this column, false to keep Linear's lines
 ---@field attachments { enabled: boolean, max_size_mb: integer } Download images embedded in issues
+---@field breadcrumb boolean Show the trail of visited issues in the winbar
 M.defaults = {
   demo = false,
+  breadcrumb = true,
   pin_branch_issue = true,
   prefix = "<leader>i",
   cache_ttl = 60,

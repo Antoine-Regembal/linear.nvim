@@ -327,6 +327,29 @@ function M.pin_issue(issues, issue)
   return pinned
 end
 
+---Path from the first issue visited to `current`, elided in the middle to fit `width`.
+---@param trail string[]|nil issues visited before `current`, oldest first
+---@param current string
+---@param width? integer
+---@return string
+function M.breadcrumb(trail, current, width)
+  local ids = vim.list_extend(vim.deepcopy(trail or {}), { current })
+  local hops = #ids - 1
+  local suffix = hops == 0 and "" or ("  ·  %d hop%s"):format(hops, hops > 1 and "s" or "")
+  local text = table.concat(ids, " › ") .. suffix
+  if not width or #ids < 3 or vim.fn.strdisplaywidth(text) <= width then
+    return text
+  end
+  for keep = #ids - 2, 1, -1 do
+    local parts = vim.list_extend({ ids[1], "…" }, ids, #ids - keep + 1, #ids)
+    text = table.concat(parts, " › ") .. suffix
+    if keep == 1 or vim.fn.strdisplaywidth(text) <= width then
+      return text
+    end
+  end
+  return text
+end
+
 ---@param issue table
 ---@return table[]
 function M.linked_issues(issue)

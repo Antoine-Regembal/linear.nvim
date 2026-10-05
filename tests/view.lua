@@ -48,5 +48,41 @@ vim.fn.search("^- ENG-2")
 vim.cmd('execute "normal \\<CR>"')
 check(vim.b.linear_issue == "ENG-2", "<CR> follows a blocks link")
 check(not vim.bo.modifiable, "buffer is read-only")
+check(#vim.api.nvim_tabpage_list_wins(0) == 1, "from a blank window, the issue opens in place")
+
+local function wins()
+  return #vim.api.nvim_tabpage_list_wins(0)
+end
+
+view.open("ENG-1")
+check(view.breadcrumb(0) == "ENG-1", "opening an issue in place starts a new trail")
+check(vim.wo.winbar:find("linear") ~= nil, "breadcrumb shown in the winbar")
+vim.cmd("normal gp")
+check(view.breadcrumb(0) == "ENG-1 › ENG-0  ·  1 hop", "following a link extends the trail")
+check(wins() == 1, "following a link stays in the same window")
+vim.cmd('execute "normal \\<BS>"')
+check(view.breadcrumb(0) == "ENG-1", "<BS> shortens the trail")
+
+vim.cmd("enew")
+local file = vim.api.nvim_get_current_buf()
+vim.api.nvim_buf_set_name(file, "notes.txt")
+vim.api.nvim_buf_set_lines(file, 0, -1, false, { "hello" })
+check(vim.wo.winbar == "", "no breadcrumb on a file buffer")
+
+view.open("ENG-0")
+check(wins() == 2 and vim.fn.winlayout()[1] == "row", "from a file, the issue opens in a vertical split")
+check(vim.b.linear_issue == "ENG-0", "the split shows the issue")
+check(#vim.fn.win_findbuf(file) == 1, "the file stays visible")
+
+vim.cmd("wincmd p")
+view.open("ENG-0")
+check(wins() == 2 and vim.b.linear_issue == "ENG-0", "an issue already shown is focused, not duplicated")
+
+vim.cmd("only")
+vim.api.nvim_set_current_buf(file)
+check(vim.wo.winbar == "", "breadcrumb cleared when the window shows a file again")
+
+vim.cmd("Linear open ENG-2")
+check(wins() == 2 and vim.fn.winlayout()[1] == "row", ":Linear open from a file opens a vertical split")
 
 vim.cmd("qa!")
