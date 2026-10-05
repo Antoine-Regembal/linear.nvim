@@ -233,6 +233,98 @@ test("render: description and comments use local files", function()
   assert(vim.tbl_contains(lines, "![c](/c/2.png)"))
 end)
 
+local LONG = vim.trim(("lorem ipsum dolor sit amet "):rep(8))
+
+test("wrap: long paragraph stops at the width", function()
+  local out = model.wrap({ LONG }, 40)
+  assert(#out > 1, "wrapped")
+  for _, l in ipairs(out) do
+    assert(vim.fn.strdisplaywidth(l) <= 40, "too long: " .. l)
+  end
+  eq(table.concat(out, " "), LONG)
+end)
+
+test("wrap: list and quote continuations keep their indent", function()
+  local cases = {
+    { "- ", "^  %a" },
+    { "  1. ", "^     %a" },
+    { "> ", "^> %a" },
+    { "- [ ] ", "^      %a" },
+  }
+  for _, c in ipairs(cases) do
+    local out = model.wrap({ c[1] .. LONG }, 40)
+    assert(vim.startswith(out[1], c[1]), "first line keeps marker: " .. out[1])
+    for n = 2, #out do
+      assert(out[n]:find(c[2]), ("continuation of %q: %q"):format(c[1], out[n]))
+    end
+    for _, l in ipairs(out) do
+      assert(vim.fn.strdisplaywidth(l) <= 40, "too long: " .. l)
+    end
+  end
+end)
+
+test("wrap: code, tables, headings and short lines untouched", function()
+  local lines = { "```", LONG, "```", "| " .. LONG .. " |", "## " .. LONG, "    " .. LONG, "short" }
+  eq(model.wrap(lines, 40), lines)
+end)
+
+test("wrap: links and long tokens are never split", function()
+  local link = "[a link with spaces](https://example.com/a/very/long/path/that/goes/on/and/on)"
+  local out = model.wrap({ "see " .. link .. ". and " .. LONG }, 40)
+  assert(vim.tbl_contains(out, link .. "."), "link kept whole")
+  eq(model.wrap({ "word " .. link }, 40), { "word", link })
+end)
+
+test("wrap: accented text measured by display width", function()
+  eq(model.wrap({ ("éé "):rep(20) }, 12)[1], "éé éé éé éé")
+end)
+
+test("render: wraps description and comments, width false disables", function()
+  local i = {
+    identifier = "A-1",
+    title = LONG,
+    description = LONG,
+    comments = { nodes = { { body = LONG, createdAt = "2026-01-01", user = { name = "U" } } } },
+  }
+  local lines = model.render(i, {}, { width = 40 })
+  eq(lines[1], "# A-1  " .. LONG)
+  for n = 2, #lines do
+    assert(vim.fn.strdisplaywidth(lines[n]) <= 40, "too long: " .. lines[n])
+  end
+  assert(vim.tbl_contains(model.render(i, {}, { width = false }), LONG), "unwrapped")
+end)
+
+test("render: linked issues aligned in columns, long titles wrapped under the title", function()
+  local function linked(id, state, title)
+    return { identifier = id, title = title, state = { name = state } }
+  end
+  local lines = model.render({
+    identifier = "A-1",
+    title = "t",
+    relations = {
+      nodes = {
+        { type = "related", relatedIssue = linked("ENG-12", "In Progress", "short") },
+        { type = "related", relatedIssue = linked("ENG-3", "Todo", LONG) },
+      },
+    },
+  }, {}, { width = 50 })
+  local start
+  for n, l in ipairs(lines) do
+    if l == "## Related" then
+      start = n + 2
+    end
+  end
+  eq(lines[start], "- ENG-12  [In Progress]  short")
+  eq(lines[start + 1]:sub(1, 25), "- ENG-3   [Todo]         ")
+  local n = start + 2
+  assert(lines[n]:find("^                         %a"), "continuation under the title: " .. lines[n])
+  while lines[n] and lines[n] ~= "" do
+    assert(vim.fn.strdisplaywidth(lines[n]) <= 50, "too long: " .. lines[n])
+    n = n + 1
+  end
+  assert(vim.fn.strdisplaywidth(lines[start + 1]) <= 50, "first line too long")
+end)
+
 test("uploads.fetch: refuses other hosts", function()
   local result
   uploads.fetch("https://example.com/x.png", function(err)

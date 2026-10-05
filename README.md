@@ -193,6 +193,7 @@ opts = {
   include_completed = false, -- show completed/canceled issues
   max_issues = 100,
   pin_branch_issue = true,   -- pin the current git branch issue on top of the pickers
+  text_width = 80,           -- wrap descriptions and comments, false to disable
   demo = false,              -- start in demo mode
   attachments = {
     enabled = true,          -- download images embedded in issues

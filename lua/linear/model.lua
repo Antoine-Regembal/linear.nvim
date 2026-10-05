@@ -99,20 +99,142 @@ function M.group_links(issue)
   return groups
 end
 
-local function link_line(i)
-  return ("- %s  [%s]  %s"):format(i.identifier, i.state and i.state.name or "?", i.title)
-end
-
 local function split(text)
   return vim.split((text or ""):gsub("\r", ""), "\n", { plain = true })
 end
 
+---Words of `text`, a markdown link or image staying a single word.
+---@param text string
+---@return string[]
+local function words(text)
+  local out, pos = {}, 1
+  while true do
+    local start = text:find("%S", pos)
+    if not start then
+      return out
+    end
+    local word = text:match("^!?%b[]%b()%S*", start) or text:match("^%S+", start)
+    table.insert(out, word)
+    pos = start + #word
+  end
+end
+
+---Append `list` to `out` as lines of at most `width` columns, the first one starting with `first`.
+---@param out string[]
+---@param first string
+---@param rest string indent of the following lines
+---@param list string[]
+---@param width integer
+local function fill(out, first, rest, list, width)
+  local current, empty = first, true
+  for _, word in ipairs(list) do
+    if empty then
+      current = current .. word
+    elseif vim.fn.strdisplaywidth(current .. " " .. word) > width then
+      table.insert(out, current)
+      current = rest .. word
+    else
+      current = current .. " " .. word
+    end
+    empty = false
+  end
+  table.insert(out, current)
+end
+
+---Markers kept on the first line, and the indent of the following ones.
+---@param line string
+---@return string first, string rest
+local function markers(line)
+  local quote = line:match("^%s*>%s?")
+  if quote then
+    return quote, quote
+  end
+  local item = line:match("^%s*[-*+] %[[ xX]%] ") or line:match("^%s*[-*+] ") or line:match("^%s*%d+[.)] ")
+  if item then
+    return item, (" "):rep(#item)
+  end
+  local indent = line:match("^%s*")
+  return indent, indent
+end
+
+---@param line string
+---@return boolean
+local function verbatim(line)
+  return line:find("^%s*#") ~= nil
+    or line:find("^%s*|") ~= nil
+    or line:find("^%s*<") ~= nil
+    or (line:find("^\t") or line:find("^    ")) ~= nil and not line:find("^%s*[-*+%d]")
+end
+
+---Hard-wrap markdown prose at `width` columns, leaving code, tables and headings as is.
+---@param lines string[]
+---@param width integer
+---@return string[]
+function M.wrap(lines, width)
+  local out, fenced = {}, false
+  for _, line in ipairs(lines) do
+    if line:find("^%s*```") or line:find("^%s*~~~") then
+      fenced = not fenced
+      table.insert(out, line)
+    elseif fenced or verbatim(line) or vim.fn.strdisplaywidth(line) <= width then
+      table.insert(out, line)
+    else
+      local first, rest = markers(line)
+      fill(out, first, rest, words(line:sub(#first + 1)), width)
+    end
+  end
+  return out
+end
+
+---@param text string
+---@param width integer
+---@return string
+local function pad(text, width)
+  return text .. (" "):rep(width - vim.fn.strdisplaywidth(text))
+end
+
+---Linked issues with identifiers and states in columns, long titles wrapped under the title.
+---@param issues table[]
+---@param width integer|false
+---@return string[]
+local function link_lines(issues, width)
+  local id_width, state_width = 0, 0
+  local function state(i)
+    return "[" .. (i.state and i.state.name or "?") .. "]"
+  end
+  for _, i in ipairs(issues) do
+    id_width = math.max(id_width, vim.fn.strdisplaywidth(i.identifier))
+    state_width = math.max(state_width, vim.fn.strdisplaywidth(state(i)))
+  end
+  local out = {}
+  for _, i in ipairs(issues) do
+    local head = ("- %s  %s  "):format(pad(i.identifier, id_width), pad(state(i), state_width))
+    local title = i.title or ""
+    if not width or width <= 0 or vim.fn.strdisplaywidth(head .. title) <= width then
+      table.insert(out, head .. title)
+    else
+      local indent = vim.fn.strdisplaywidth(head)
+      fill(out, head, (" "):rep(indent <= width - 20 and indent or 4), words(title), width)
+    end
+  end
+  return out
+end
+
 ---@param issue table issue_detail payload
 ---@param files? table<string, linear.Upload> local files of embedded uploads, by URL
+---@param opts? { width?: integer|false } defaults to the `text_width` option
 ---@return string[]
-function M.render(issue, files)
+function M.render(issue, files, opts)
   local uploads = require("linear.uploads")
   files = files or {}
+  local width = opts and opts.width
+  if width == nil then
+    width = require("linear.config").options.text_width
+  end
+  local function body(text)
+    local out = split(text)
+    return width and width > 0 and M.wrap(out, width) or out
+  end
   local lines = { ("# %s  %s"):format(issue.identifier, issue.title), "" }
   local labels = vim.tbl_map(function(l)
     return l.name
@@ -147,16 +269,14 @@ function M.render(issue, files)
   for _, s in ipairs(sections) do
     if #s[2] > 0 then
       vim.list_extend(lines, { "", "## " .. s[1], "" })
-      for _, i in ipairs(s[2]) do
-        table.insert(lines, link_line(i))
-      end
+      vim.list_extend(lines, link_lines(s[2], width))
     end
   end
 
   vim.list_extend(lines, { "", "## Description", "" })
   vim.list_extend(
     lines,
-    split(
+    body(
       issue.description ~= nil and issue.description ~= "" and uploads.rewrite(issue.description, files)
         or "_No description_"
     )
@@ -173,7 +293,7 @@ function M.render(issue, files)
         lines,
         { "", ("### %s · %s"):format(c.user and c.user.name or "Unknown", c.createdAt:sub(1, 10)), "" }
       )
-      vim.list_extend(lines, split(uploads.rewrite(c.body, files)))
+      vim.list_extend(lines, body(uploads.rewrite(c.body, files)))
     end
   end
   return lines

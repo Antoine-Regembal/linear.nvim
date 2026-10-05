@@ -78,6 +78,7 @@ Issue buffer:
     include_completed = false,
     max_issues = 100,
     pin_branch_issue = true,
+    text_width = 80,         -- wrap descriptions and comments, false to disable
     demo = false,
     attachments = {
       enabled = true,          -- download embedded images
